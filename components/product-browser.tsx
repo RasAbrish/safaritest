@@ -1,44 +1,31 @@
 "use client";
 
-import Image from "next/image";
-import { Download, PackageOpen, RefreshCw, Search, SlidersHorizontal, Star } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { useDeferredValue, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProducts } from "@/hooks/use-products";
 import { exportProducts } from "@/lib/export-products";
 import type { ProductQuery } from "@/types/product";
 
 const sortOptions = [
-  { label: "Name: A–Z", sortBy: "title", order: "asc" },
-  { label: "Name: Z–A", sortBy: "title", order: "desc" },
-  { label: "Price: Low to high", sortBy: "price", order: "asc" },
-  { label: "Price: High to low", sortBy: "price", order: "desc" },
-  { label: "Highest rated", sortBy: "rating", order: "desc" },
-  { label: "Most in stock", sortBy: "stock", order: "desc" }
+  { label: "Name A-Z", sortBy: "title", order: "asc" },
+  { label: "Name Z-A", sortBy: "title", order: "desc" },
+  { label: "Lowest price", sortBy: "price", order: "asc" },
+  { label: "Highest price", sortBy: "price", order: "desc" },
+  { label: "Highest rating", sortBy: "rating", order: "desc" },
+  { label: "Most stock", sortBy: "stock", order: "desc" }
 ] as const;
-
-function LoadingRows() {
-  return (
-    <div className="product-grid" aria-label="Loading products">
-      {Array.from({ length: 8 }, (_, index) => (
-        <div className="product-card skeleton-card" key={index}>
-          <div className="skeleton skeleton-image" />
-          <div className="card-content">
-            <div className="skeleton skeleton-short" />
-            <div className="skeleton skeleton-title" />
-            <div className="skeleton skeleton-line" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function ProductBrowser() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [query, setQuery] = useState<ProductQuery>({
     page: 1,
-    limit: 8,
+    limit: 10,
     search: "",
     sortBy: "title",
     order: "asc"
@@ -53,7 +40,7 @@ export function ProductBrowser() {
   const start = data?.total ? (query.page - 1) * query.limit + 1 : 0;
   const end = Math.min(query.page * query.limit, data?.total ?? 0);
 
-  const updateSort = (value: string) => {
+  function changeSort(value: string) {
     const option = sortOptions[Number(value)];
     setQuery((current) => ({
       ...current,
@@ -61,118 +48,128 @@ export function ProductBrowser() {
       sortBy: option.sortBy,
       order: option.order
     }));
-  };
+  }
 
   return (
-    <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="Stockroom home">
-          <span className="brand-mark">S</span>
-          <span>Stockroom</span>
-        </a>
-        <span className="api-status"><i /> Live catalog</span>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="eyebrow"><span>Catalog</span><b>{data?.total ?? "—"} products</b></div>
-        <h1>Find what you need.<br /><em>Skip what you don’t.</em></h1>
-        <p>Browse the complete product collection, compare details, and export exactly what’s on screen.</p>
-      </section>
-
-      <section className="catalog" aria-label="Product catalog">
-        <div className="toolbar">
-          <label className="search-field">
-            <Search size={19} aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products…"
-              aria-label="Search products"
-            />
-            {isFetching && !isLoading && <span className="mini-spinner" />}
-          </label>
-
-          <div className="toolbar-actions">
-            <label className="sort-field">
-              <SlidersHorizontal size={17} aria-hidden="true" />
-              <select onChange={(event) => updateSort(event.target.value)} aria-label="Sort products">
-                {sortOptions.map((option, index) => <option value={index} key={option.label}>{option.label}</option>)}
-              </select>
-            </label>
-            <button
-              className="export-button"
-              onClick={() => data?.products && exportProducts(data.products)}
-              disabled={!data?.products.length}
-            >
-              <Download size={17} /> Export Excel
-            </button>
-          </div>
+    <main className="mx-auto max-w-6xl p-4 py-10 sm:p-8">
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Product List</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Search, sort, paginate and export products.</p>
         </div>
+        <Button
+          onClick={() => data?.products && exportProducts(data.products)}
+          disabled={!data?.products.length}
+        >
+          <Download /> Export Excel
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <LoadingRows />
-        ) : error ? (
-          <div className="message-state" role="alert">
-            <div className="message-icon error-icon">!</div>
-            <h2>We couldn’t load the catalog</h2>
-            <p>{error.message}</p>
-            <button onClick={() => refetch()}><RefreshCw size={16} /> Try again</button>
-          </div>
-        ) : data?.products.length === 0 ? (
-          <div className="message-state">
-            <div className="message-icon"><PackageOpen size={26} /></div>
-            <h2>No products found</h2>
-            <p>Try a different search phrase or clear your search.</p>
-            <button onClick={() => setSearch("")}>Clear search</button>
-          </div>
-        ) : (
-          <div className={`product-grid ${isFetching ? "is-refreshing" : ""}`}>
-            {data?.products.map((product) => (
-              <article className="product-card" key={product.id}>
-                <div className="product-image">
-                  <Image src={product.thumbnail} alt="" fill sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 25vw" />
-                  <span className="category">{product.category.replaceAll("-", " ")}</span>
-                </div>
-                <div className="card-content">
-                  <div className="product-meta">
-                    <span>{product.brand ?? "Independent"}</span>
-                    <span className="rating"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)}</span>
-                  </div>
-                  <h2>{product.title}</h2>
-                  <p>{product.description}</p>
-                  <div className="card-footer">
-                    <strong>${product.price.toFixed(2)}</strong>
-                    <span className={product.stock < 10 ? "low-stock" : ""}>{product.stock} in stock</span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-
-        {!error && data && data.total > 0 && (
-          <div className="pagination-bar">
-            <div className="result-count">Showing <b>{start}–{end}</b> of <b>{data.total}</b></div>
-            <div className="pagination">
-              <button disabled={query.page === 1} onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}>Previous</button>
-              <span>Page <b>{query.page}</b> of {pageCount}</span>
-              <button disabled={query.page >= pageCount} onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}>Next</button>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Products</CardTitle>
+          <CardDescription>{data?.total ?? 0} products available</CardDescription>
+        </CardHeader>
+        <CardContent className="px-0">
+          <div className="flex flex-col gap-3 border-b p-4 md:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="pl-9"
+              />
             </div>
-            <label className="page-size">
-              Show
-              <select
-                value={query.limit}
-                onChange={(event) => setQuery((current) => ({ ...current, page: 1, limit: Number(event.target.value) }))}
-              >
-                {[8, 12, 20, 40].map((size) => <option key={size}>{size}</option>)}
-              </select>
-            </label>
-          </div>
-        )}
-      </section>
 
-      <footer>Powered by DummyJSON <span>•</span> Built with TanStack Query</footer>
+            <NativeSelect className="w-full md:w-48" onChange={(event) => changeSort(event.target.value)} aria-label="Sort products">
+              {sortOptions.map((option, index) => (
+                <NativeSelectOption value={index} key={option.label}>{option.label}</NativeSelectOption>
+              ))}
+            </NativeSelect>
+
+            <NativeSelect
+              className="w-full md:w-36"
+              value={query.limit}
+              onChange={(event) => setQuery((current) => ({
+                ...current,
+                page: 1,
+                limit: Number(event.target.value)
+              }))}
+              aria-label="Products per page"
+            >
+              {[5, 10, 20, 40].map((size) => (
+                <NativeSelectOption value={size} key={size}>{size} per page</NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
+
+          {isLoading ? (
+            <div className="p-16 text-center text-sm text-muted-foreground">Loading products...</div>
+          ) : error ? (
+            <div className="space-y-3 p-16 text-center" role="alert">
+              <p className="text-sm text-destructive">{error.message}</p>
+              <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+            </div>
+          ) : data?.products.length === 0 ? (
+            <div className="p-16 text-center text-sm text-muted-foreground">No products found.</div>
+          ) : (
+            <div className={isFetching ? "opacity-50" : ""}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead>Stock</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data?.products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>{product.id}</TableCell>
+                      <TableCell className="font-medium">{product.title}</TableCell>
+                      <TableCell>{product.category}</TableCell>
+                      <TableCell>${product.price.toFixed(2)}</TableCell>
+                      <TableCell>{product.rating.toFixed(1)}</TableCell>
+                      <TableCell>{product.stock}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {data && data.total > 0 && !error && (
+            <div className="flex flex-col items-center justify-between gap-3 border-t p-4 text-sm text-muted-foreground sm:flex-row">
+              <span>Showing {start}-{end} of {data.total}</span>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={query.page === 1}
+                  onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
+                >
+                  Previous
+                </Button>
+                <span>Page {query.page} of {pageCount}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={query.page >= pageCount}
+                  onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }
