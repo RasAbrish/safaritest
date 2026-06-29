@@ -1,16 +1,6 @@
 # Stockroom
 
-A responsive product catalog built with Next.js and TanStack Query using the DummyJSON fake REST API.
-
-## Features
-
-- Server-side pagination, search, and sorting
-- Reusable TanStack Query product hook
-- Loading, empty, and error states
-- Validated API proxy with boundary handling
-- Excel export for the current result page
-- Responsive product grid
-- API route tests
+A responsive product catalog built with Next.js and TanStack Query u
 
 ## Run locally
 
